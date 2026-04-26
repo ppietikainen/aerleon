@@ -999,6 +999,8 @@ This NFTables ACL generator generates stateful policies via  [conntrack](https:/
 
 When a non-deny term is processed for ACL generation, the `ct state new` is added to the resulting policy to ensure only valid incoming connections for that term is accepted. This means invalid state packets are dropped by default.
 
+The exception is a term whose only protocol is `icmpv6`, which is rendered without the conntrack match. Neighbor/router discovery and MLD are left untracked by the kernel, and the ICMPv6 error types are tracked as `RELATED` (or `INVALID` where the original flow is unknown). Neither is ever `NEW`, so requiring `ct state new` would stop such a rule matching at all -- dropping NDP, and dropping `packet-too-big` so that path MTU discovery fails. `echo-request` is the only ICMPv6 type the match would suit, and the base chain already accepts its replies as established traffic. A term listing any other protocol alongside `icmpv6` is treated normally.
+
 An implementation design for this generator is that terms with options 'established', 'tcp-established' will not rendered in the final NFT configuration.
 
 A term is likewise not rendered when every protocol it lists belongs to the other address family -- an `icmpv6` term in an `inet` filter, or an `icmp` term in an `inet6` filter. The protocol match for such a term cannot be expressed in that table, and rendering it without one would leave a rule matching every packet in the chain. A term keeping at least one protocol valid for the family is rendered as normal, minus the protocols that are not.
