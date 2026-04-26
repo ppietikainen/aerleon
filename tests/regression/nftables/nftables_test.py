@@ -466,6 +466,34 @@ class NftablesTest(parameterized.TestCase):
             [],
             ['ip protocol { tcp, udp }', 'meta l4proto { tcp, udp }'],
         ),
+        # mixed AF with icmp+icmpv6 — both types present, use multi-element list
+        # to avoid single-item Add() path; verifies v4/v6 separation
+        (
+            'inet',
+            ['icmp', 'icmpv6'],
+            [],
+            [],
+            ['echo-request', 'echo-reply'],
+            ['icmp type { echo-request, echo-reply }', 'icmpv6 type { echo-request, echo-reply }'],
+        ),
+        # icmp-only on mixed should not produce icmpv6
+        (
+            'inet',
+            ['icmp'],
+            [],
+            [],
+            ['echo-request', 'echo-reply'],
+            ['icmp type { echo-request, echo-reply }'],
+        ),
+        # icmpv6-only on mixed should not produce icmp
+        (
+            'inet',
+            ['icmpv6'],
+            [],
+            [],
+            ['echo-request', 'echo-reply'],
+            ['icmpv6 type { echo-request, echo-reply }'],
+        ),
     )
     def testPortsAndProtocols(self, af, proto, src_p, dst_p, icmp_type, expected):
         result = self.dummyterm.PortsAndProtocols(af, proto, src_p, dst_p, icmp_type)
@@ -537,6 +565,27 @@ class NftablesTest(parameterized.TestCase):
         self.assertIn('icmpv6-plus-tcp', nft, f'compatible term was dropped:\n{nft}')
         self.assertIn('ip protocol tcp', nft, f'tcp match missing:\n{nft}')
         self.assertNotIn('icmpv6', nft.split('chain icmpv6-plus-tcp')[1].split('}')[0])
+
+    def testGroupExpressionsNoMixedAFCrossPairing(self):
+        """ip saddr must never pair with icmpv6 type, ip6 saddr never with icmp type."""
+        address_expr = [
+            'ip saddr 10.0.0.1/32',
+            'ip6 saddr 2001:db8::1/128',
+        ]
+        pp_expr = ['icmp type echo-request', 'icmpv6 type echo-request']
+        result = self.dummyterm.GroupExpressions(address_expr, pp_expr, '', 'accept')
+        for rule in result:
+            self.assertFalse(
+                'ip saddr' in rule and 'icmpv6' in rule,
+                f"Cross-pairing: ip saddr with icmpv6 in rule: {rule!r}",
+            )
+            self.assertFalse(
+                'ip6 saddr' in rule
+                and rule.lstrip().startswith('ip6')
+                and 'icmp type' in rule
+                and 'icmpv6' not in rule,
+                f"Cross-pairing: ip6 saddr with icmp (v4) in rule: {rule!r}",
+            )
 
     @parameterized.parameters(
         'chain_name input 0 inet extraneous_target_option',
