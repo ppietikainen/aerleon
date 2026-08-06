@@ -65,8 +65,20 @@ class Term(aclgenerator.Term):
 
         self.term_name = f'{self.filter[:1]}_{self.term.name}'
 
+    _LOOPBACK_NETS = ('127.', '::1')
+
+    def _is_loopback_only(self, addrs):
+        """True if all addresses are loopback (127.x or ::1)."""
+        return bool(addrs) and all(str(a).startswith(self._LOOPBACK_NETS) for a in addrs)
+
     def __str__(self) -> str:
         ret_str = []
+
+        # Windows handles loopback natively — skip explicit loopback terms
+        if self._is_loopback_only(self.term.source_address) or self._is_loopback_only(
+            self.term.destination_address
+        ):
+            return ''
 
         # Don't render icmpv6 protocol terms under inet, or icmp under inet6
         if (self.af == 'inet6' and 'icmp' in self.term.protocol) or (
