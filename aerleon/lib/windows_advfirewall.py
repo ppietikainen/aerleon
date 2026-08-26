@@ -93,6 +93,9 @@ class Term(windows.Term):
         dst_port: list[str],
         ret_str: list[str],
     ) -> None:
+        # At least advfirewall supports port ranges, unlike windows ipsec,
+        # so the src and dst port lists will always be one element long.
+        #
         # advfirewall remoteip/localip accept comma-separated addresses, so collapse
         # the address list into one rule per (daddr, proto) rather than one per src addr.
         # A list of only /0 prefixes (e.g. dual-stack ANY: 0.0.0.0/0 + ::/0) is
