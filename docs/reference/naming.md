@@ -4,6 +4,18 @@ The naming library is used by the Aerleon system to parse definitions of network
 and service data. These definitions are based on 'tokens' that are used in the
 high-level [policy language](yaml_reference.md).
 
+Token names are letters, digits, hyphens and underscores (`^[-_a-zA-Z0-9]+$`).
+The full syntax of definition files is given by
+[`schemas/aerleon-definitions.schema.json`](https://github.com/aerleon/aerleon/blob/main/schemas/aerleon-definitions.schema.json),
+with schemas for policy and config files alongside it.
+
+Note that the definitions parser does not itself enforce this, so a name outside
+the pattern is loaded without complaint. It is where the token is *used* that the
+difference shows: a name that looks like a bare IPv6 address is not resolved as a
+token in a policy file. Aerleon logs `Unrecognized value format` at warning level
+and the term is left with no addresses at all -- it does not fail. Naming a
+definition after an address or FQDN is therefore best avoided.
+
 ## Basic Usage
 
 **Create a directory to hold the definitions files**
