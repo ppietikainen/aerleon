@@ -637,6 +637,8 @@ class Nftables(aclgenerator.ACLGenerator):
             'destination_port',
             'expiration',
             'icmp_type',
+            'logging',
+            'counter',
             'name',  # obj attribute, not token
             'option',
             'protocol',
