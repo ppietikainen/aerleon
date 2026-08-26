@@ -95,7 +95,10 @@ class Term(windows.Term):
     ) -> None:
         # advfirewall remoteip/localip accept comma-separated addresses, so collapse
         # the address list into one rule per (daddr, proto) rather than one per src addr.
-        if not src_addr or (len(src_addr) == 1 and src_addr[0].prefixlen == 0):
+        # A list of only /0 prefixes (e.g. dual-stack ANY: 0.0.0.0/0 + ::/0) is
+        # netsh's 'any', which already covers both stacks -- emit that rather than
+        # spelling out every family.
+        if not src_addr or all(a.prefixlen == 0 for a in src_addr):
             src_str = 'any'
         else:
             src_str = ','.join(dict.fromkeys(str(a) for a in src_addr))
