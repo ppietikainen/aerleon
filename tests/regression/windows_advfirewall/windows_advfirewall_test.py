@@ -43,6 +43,38 @@ term good-simple {
 }
 """
 
+GOOD_HEADER_MIXED = """
+header {
+  comment:: "this is a mixed test acl"
+  target:: windows_advfirewall in mixed
+}
+"""
+
+MIXED_NO_ADDRESSES = """
+term mixed-any {
+  protocol:: tcp
+  destination-port:: HTTPS
+  action:: accept
+}
+"""
+
+MIXED_DUAL_STACK = """
+term mixed-dual {
+  destination-address:: DUAL_NET
+  protocol:: tcp
+  destination-port:: HTTPS
+  action:: accept
+}
+"""
+
+MIXED_V4_ONLY = """
+term mixed-v4 {
+  destination-address:: V4_NET
+  protocol:: tcp
+  action:: accept
+}
+"""
+
 GOOD_SIMPLE_WARNING = """
 term good-simple-warning {
   protocol:: tcp
@@ -415,6 +447,60 @@ class WindowsAdvFirewallTest(absltest.TestCase):
             'explicit miscellaneous proto',
         )
         print(result)
+
+    def _MixedRules(self, term, netdef=None):
+        if netdef:
+            self.naming._ParseLine(netdef, 'networks')
+        self.naming._ParseLine('HTTPS = 443/tcp', 'services')
+        acl = windows_advfirewall.WindowsAdvFirewall(
+            policy.ParsePolicy(GOOD_HEADER_MIXED + term, self.naming), EXP_INFO
+        )
+        return [
+            line for line in str(acl).splitlines() if line.startswith('netsh advfirewall firewall')
+        ]
+
+    def testMixedAfIsAccepted(self):
+        """'mixed' is a supported address family, as the header docs state."""
+        rules = self._MixedRules(MIXED_NO_ADDRESSES)
+        self.assertNotEqual(rules, [], 'mixed filter rendered nothing')
+
+    def testMixedNoAddressesRendersOnce(self):
+        """A term with no addresses must not render once per family.
+
+        netsh 'any' already covers both stacks, so rendering the term on both
+        passes would emit two byte-identical rules.
+        """
+        rules = self._MixedRules(MIXED_NO_ADDRESSES)
+        self.assertEqual(len(rules), 1, f'expected one rule, got: {rules}')
+        self.assertEqual(len(set(rules)), len(rules), f'duplicate rules: {rules}')
+
+    def testMixedDualStackRendersPerFamily(self):
+        """A dual-stack address renders one rule per family, each AF-pure."""
+        rules = self._MixedRules(MIXED_DUAL_STACK, 'DUAL_NET = 10.0.0.0/8 2001:db8::/32')
+        self.assertEqual(len(rules), 2, f'expected one rule per family, got: {rules}')
+        v4 = [r for r in rules if '10.0.0.0/8' in r]
+        v6 = [r for r in rules if '2001:db8::/32' in r]
+        self.assertEqual(len(v4), 1, f'expected one IPv4 rule: {rules}')
+        self.assertEqual(len(v6), 1, f'expected one IPv6 rule: {rules}')
+        self.assertNotIn('2001:db8::/32', v4[0])
+        self.assertNotIn('10.0.0.0/8', v6[0])
+
+    def testMixedSingleFamilyAddressRendersOnce(self):
+        """An address present in only one family must not emit an empty peer rule."""
+        rules = self._MixedRules(MIXED_V4_ONLY, 'V4_NET = 10.0.0.0/8')
+        self.assertEqual(len(rules), 1, f'expected a single IPv4 rule, got: {rules}')
+        self.assertIn('10.0.0.0/8', rules[0])
+
+    def testMixedIcmpRendersInMatchingFamilyOnly(self):
+        """icmp renders only as icmpv4, icmpv6 only as icmpv6, once each."""
+        icmp = self._MixedRules(GOOD_TERM_ICMP)
+        self.assertEqual(len(icmp), 1, f'expected one icmpv4 rule, got: {icmp}')
+        self.assertIn('protocol=icmpv4', icmp[0])
+
+        self.setUp()
+        icmpv6 = self._MixedRules(GOOD_TERM_ICMPV6)
+        self.assertEqual(len(icmpv6), 1, f'expected one icmpv6 rule, got: {icmpv6}')
+        self.assertIn('protocol=icmpv6', icmpv6[0])
 
     def testBuildTokens(self):
         pol1 = windows_advfirewall.WindowsAdvFirewall(
