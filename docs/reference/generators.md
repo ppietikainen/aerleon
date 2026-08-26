@@ -1652,8 +1652,15 @@ targets:
 
 * _out_: Specifies that the direction of packet flow is out. (default)
 * _in_: Specifies that the direction of packet flow is in.
-* _inet_: specifies that the resulting filter should only render IPv4 addresses.
+* _inet_: specifies that the resulting filter should only render IPv4 addresses. (default)
 * _inet6_: specifies that the resulting filter should only render IPv6 addresses.
+* _mixed_: render both address families from a single filter.
+
+Under `mixed`, each term is rendered once per address family, with its addresses
+filtered to that family; a term whose addresses are all of one family renders
+only for that family. A term with no addresses renders once, since netsh `any`
+already covers both stacks. `icmp` renders only for IPv4 and `icmpv6` only for
+IPv6.
 
 ### Term Format
 

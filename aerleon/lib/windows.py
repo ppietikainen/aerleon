@@ -122,14 +122,37 @@ class Term(aclgenerator.Term):
         else:
             protocols = ['any']
 
-        # addresses
+        # Addresses are filtered to this filter's address family. Under a mixed
+        # filter the term is rendered once per family, so a term whose addresses
+        # are all of the other family must not render at all here.
+        af_version = 4 if self.af == 'inet' else 6
         src_addr = self.term.source_address
-        if not src_addr:
+        if src_addr:
+            src_addr = [a for a in src_addr if a.version == af_version]
+            if not src_addr:
+                return ''
+        else:
             src_addr = [self._all_ips]
 
         dst_addr = self.term.destination_address
-        if not dst_addr:
+        if dst_addr:
+            dst_addr = [a for a in dst_addr if a.version == af_version]
+            if not dst_addr:
+                return ''
+        else:
             dst_addr = [self._all_ips]
+
+        # netsh 'any' already covers both stacks, so a term whose addresses are
+        # all /0 would render identically on both passes of a mixed filter.
+        # Render it on the inet pass only. icmpv6 is the exception: it is
+        # inet6-only, so it has to render on the inet6 pass.
+        if (
+            self.af == 'inet6'
+            and 'icmpv6' not in self.term.protocol
+            and all(a.prefixlen == 0 for a in src_addr)
+            and all(a.prefixlen == 0 for a in dst_addr)
+        ):
+            return ''
 
         if self.term.source_address_exclude or self.term.destination_address_exclude:
             raise aclgenerator.UnsupportedFilterError(
@@ -262,7 +285,7 @@ class WindowsGenerator(aclgenerator.ACLGenerator):
     _DEFAULT_ACTION = 'block'
     _TERM = Term
 
-    _GOOD_AFS = ['inet', 'inet6']
+    _GOOD_AFS = ['inet', 'inet6', 'mixed']
 
     def _BuildTokens(self) -> tuple[set[str], dict[str, set[str]]]:
         """Build supported tokens for platform.
@@ -344,6 +367,7 @@ class WindowsGenerator(aclgenerator.ACLGenerator):
             # add the terms
             new_terms = []
             term_names = set()
+            afs = ['inet', 'inet6'] if filter_type == 'mixed' else [filter_type]
             for term in terms:
                 if term.name in term_names:
                     raise aclgenerator.DuplicateTermError(
@@ -353,7 +377,14 @@ class WindowsGenerator(aclgenerator.ACLGenerator):
 
                 if 'established' in term.option or 'tcp-established' in term.option:
                     continue
-                new_terms.append(self._TERM(term, filter_name, default_action, filter_type))
+                for af in afs:
+                    # Skip AF-mismatched ICMP here rather than building a Term
+                    # that would only warn and render nothing.
+                    if af == 'inet' and 'icmpv6' in term.protocol:
+                        continue
+                    if af == 'inet6' and 'icmp' in term.protocol:
+                        continue
+                    new_terms.append(self._TERM(term, filter_name, default_action, af))
 
             self.windows_policies.append(
                 (header, filter_name, filter_type, default_action, new_terms)
