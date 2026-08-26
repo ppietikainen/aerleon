@@ -17,7 +17,7 @@
 
 import string
 
-from aerleon.lib import windows
+from aerleon.lib import aclgenerator, windows
 from aerleon.lib.nacaddr import IPv4, IPv6
 
 
@@ -118,7 +118,7 @@ class Term(windows.Term):
 
     def _ComposeRule(
         self,
-        srcaddr: IPv4 | str,
+        srcaddr: str,
         dstaddr: IPv4,
         proto: str,
         srcport: str,
@@ -127,14 +127,13 @@ class Term(windows.Term):
     ) -> str:
         """Convert the given parameters into a netsh add rule string.
 
-        srcaddr may be a nacaddr object or a pre-built comma-separated address string.
+        srcaddr is the pre-built comma-separated address string (or 'any')
+        assembled by _CartesianProduct.
         """
         atoms = []
 
         # We assume a default direction of OUT, but if it's IN, the Windows
         # advfirewall changes around the remote and local labels.
-        if self.filter is None:
-            self.filter = 'out'
         if self.filter.lower() == 'in':
             src_label = 'remote'
             dst_label = 'local'
@@ -142,16 +141,13 @@ class Term(windows.Term):
             src_label = 'local'
             dst_label = 'remote'
         else:
-            raise UnsupportedFilterOptionError(f"direction {self.filter} unrecognized")
+            raise aclgenerator.UnsupportedFilterError(
+                f'Unrecognized windows_advfirewall direction: {self.filter}'
+            )
 
         atoms.append(self._DIR_ATOM.substitute(dir=self.filter))
 
-        if isinstance(srcaddr, str):
-            atoms.append(self._ADDR_ATOM.substitute(dir=src_label, addr=srcaddr))
-        elif srcaddr.prefixlen == 0:
-            atoms.append(self._ADDR_ATOM.substitute(dir=src_label, addr='any'))
-        else:
-            atoms.append(self._ADDR_ATOM.substitute(dir=src_label, addr=str(srcaddr)))
+        atoms.append(self._ADDR_ATOM.substitute(dir=src_label, addr=srcaddr))
 
         if dstaddr.prefixlen == 0:
             atoms.append(self._ADDR_ATOM.substitute(dir=dst_label, addr='any'))
