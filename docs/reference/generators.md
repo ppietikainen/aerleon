@@ -1676,6 +1676,12 @@ would block the traffic the earlier terms allow.
 
 * _destination-exclude_: Exclude one or more address tokens from the specified destination-address
 * _source-exclude_: exclude one or more address tokens from the specified source-address.
+* _windows-program_: only match traffic of this executable (full path), rendered as `program=`.
+* _windows-service_: only match traffic of this service (short name, e.g. `TermService`), rendered as `service=`.
+
+A service hosted in `svchost.exe` is scoped with _windows-service_, not with the
+svchost path. Traffic received through HTTP.sys (WinRM, IIS) belongs to the
+`System` process, so neither key can scope it to the service behind it.
 
 ### Sub Tokens
 
@@ -1718,6 +1724,10 @@ Term comments become the rule's `-Description`.
 ### Term Format
 
 * for common keys see the [common](#common) section above.
+* _windows-program_: only match traffic of this executable (full path), rendered as `-Program`.
+* _windows-service_: only match traffic of this service (short name), rendered as `-Service`.
+
+The same svchost and HTTP.sys caveats as for Windows Advanced Firewall apply.
 
 ### Sub Tokens
 

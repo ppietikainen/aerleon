@@ -16,6 +16,7 @@
 from absl.testing import absltest
 
 from aerleon.lib import naming, policy, windows_powershell
+from aerleon.lib import yaml as yaml_frontend
 from tests.regression_utils import capture
 
 HEADER_IN = """
@@ -109,6 +110,38 @@ term deny-vrrp {
 }
 """
 
+TERM_PROGRAM = """
+term allow-ssh-sshd {
+  destination-port:: SSH
+  protocol:: tcp
+  windows-program:: "C:\\Program Files\\OpenSSH\\sshd.exe"
+  action:: accept
+}
+"""
+
+TERM_SERVICE = """
+term allow-rdp-termservice {
+  destination-port:: RDP
+  protocol:: tcp
+  windows-service:: TermService
+  action:: accept
+}
+"""
+
+YAML_PROGRAM = """
+filters:
+- header:
+    targets:
+      windows_powershell: in
+  terms:
+  - name: allow-ssh-sshd
+    destination-port: SSH
+    protocol: tcp
+    windows-program: 'C:\\Program Files\\OpenSSH\\sshd.exe'
+    windows-service: sshd
+    action: accept
+"""
+
 TERM_ANY = """
 term allow-any {
   action:: accept
@@ -133,6 +166,8 @@ SUPPORTED_TOKENS = {
     'source_address_exclude',
     'source_port',
     'translated',
+    'windows_program',
+    'windows_service',
 }
 
 EXP_INFO = 2
@@ -244,6 +279,21 @@ class WindowsPowerShellTest(absltest.TestCase):
         """':' is not a comment in PowerShell (#495)."""
         text = self._Render(HEADER_IN + TERM_SSH)
         self.assertFalse([line for line in text.splitlines() if line.startswith(':')], text)
+
+    def testProgram(self):
+        rules = self._Rules(HEADER_IN + TERM_PROGRAM)
+        self.assertIn("-Program 'C:\\Program Files\\OpenSSH\\sshd.exe'", rules[0])
+        self.assertNotIn('-Service', rules[0])
+
+    def testService(self):
+        rules = self._Rules(HEADER_IN + TERM_SERVICE)
+        self.assertIn("-Service 'TermService'", rules[0])
+        self.assertNotIn('-Program', rules[0])
+
+    def testProgramAndServiceFromYaml(self):
+        pol = yaml_frontend.ParsePolicy(YAML_PROGRAM, filename='h.yaml', definitions=self.naming)
+        text = str(windows_powershell.WindowsPowerShell(pol, EXP_INFO))
+        self.assertIn("-Program 'C:\\Program Files\\OpenSSH\\sshd.exe' -Service 'sshd'", text)
 
     def testBuildTokens(self):
         acl = windows_powershell.WindowsPowerShell(

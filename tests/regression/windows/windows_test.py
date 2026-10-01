@@ -88,6 +88,8 @@ SUPPORTED_TOKENS = {
     'source_address_exclude',
     'source_port',
     'translated',
+    'windows_program',
+    'windows_service',
 }
 
 SUPPORTED_SUB_TOKENS = {

@@ -265,7 +265,7 @@ class WindowsGenerator(aclgenerator.ACLGenerator):
         """
         supported_tokens, supported_sub_tokens = super()._BuildTokens()
 
-        supported_tokens |= {'option'}
+        supported_tokens |= {'option', 'windows_program', 'windows_service'}
         supported_tokens -= {'verbatim'}
 
         supported_sub_tokens.update({'action': {'accept', 'deny'}})

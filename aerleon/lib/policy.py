@@ -343,6 +343,8 @@ class Term:
       port-mirror: VarType.PORT_MIRROR
       qos: VarType.QOS
       pan-application: VarType.PAN_APPLICATION
+      windows-program: VarType.WINDOWS_PROGRAM
+      windows-service: VarType.WINDOWS_SERVICE
       profile-settings: VarType.PROFILE_SETTINGS
       policer: VarType.POLICER
       priority: VarType.PRIORITY
@@ -449,6 +451,8 @@ class Term:
         self.protocol_except = []
         self.qos = None
         self.pan_application = []
+        self.windows_program = None
+        self.windows_service = None
         self.profile_settings = []
         self.routing_instance = None
         self.source_address = []
@@ -792,6 +796,10 @@ class Term:
             ret_str.append(f'  log_limit: {self.log_limit[0]}/{self.log_limit[1]}')
         if self.log_name:
             ret_str.append(f'  log_name: {self.log_name}')
+        if self.windows_program:
+            ret_str.append(f'  windows_program: {self.windows_program}')
+        if self.windows_service:
+            ret_str.append(f'  windows_service: {self.windows_service}')
         if self.priority:
             ret_str.append(f'  priority: {self.priority}')
         if self.counter:
@@ -880,6 +888,12 @@ class Term:
         if sorted(self.pan_application) != sorted(other.pan_application):
             return False
 
+        # windows-program, windows-service
+        if self.windows_program != other.windows_program:
+            return False
+        if self.windows_service != other.windows_service:
+            return False
+
         # profile-settings
         if sorted(self.profile_settings) != sorted(other.profile_settings):
             return False
@@ -916,6 +930,10 @@ class Term:
         if self.qos != other.qos:
             return False
         if sorted(self.pan_application) != sorted(other.pan_application):
+            return False
+        if self.windows_program != other.windows_program:
+            return False
+        if self.windows_service != other.windows_service:
             return False
         if sorted(self.profile_settings) != sorted(other.profile_settings):
             return False
@@ -1264,6 +1282,10 @@ class Term:
                 self.log_limit = obj.value
             elif obj.var_type is VarType.LOG_NAME:
                 self.log_name = obj.value
+            elif obj.var_type is VarType.WINDOWS_PROGRAM:
+                self.windows_program = obj.value
+            elif obj.var_type is VarType.WINDOWS_SERVICE:
+                self.windows_service = obj.value
             # police man, tryin'a take you jail
             elif obj.var_type is VarType.POLICER:
                 self.policer = obj.value
@@ -1643,10 +1665,12 @@ class VarType:
     DZONE = 66
     SOURCE_FQDN = 67
     DESTINATION_FQDN = 68
+    WINDOWS_PROGRAM = 71
+    WINDOWS_SERVICE = 72
 
     def __init__(self, var_type: int, value: Any) -> None:
         self.var_type = var_type
-        if self.var_type == self.COMMENT or self.var_type == self.LOG_NAME:
+        if self.var_type in (self.COMMENT, self.LOG_NAME, self.WINDOWS_PROGRAM):
             # remove the double quotes
             val = str(value).strip('"')
             # make all of the lines start w/o leading whitespace.
@@ -1844,6 +1868,8 @@ tokens = (
     'LOGGING',
     'LOG_LIMIT',
     'LOG_NAME',
+    'WINDOWS_PROGRAM',
+    'WINDOWS_SERVICE',
     'LOSS_PRIORITY',
     'LPAREN',
     'LSQUARE',
@@ -1947,6 +1973,8 @@ reserved = {
     'protocol-except': 'PROTOCOL_EXCEPT',
     'qos': 'QOS',
     'pan-application': 'PAN_APPLICATION',
+    'windows-program': 'WINDOWS_PROGRAM',
+    'windows-service': 'WINDOWS_SERVICE',
     'profile-settings': 'PROFILE_SETTINGS',
     'routing-instance': 'ROUTING_INSTANCE',
     'source-address': 'SADDR',
@@ -2115,6 +2143,8 @@ def p_term_spec(p: YaccProduction) -> None:
     | term_spec logging_spec
     | term_spec log_limit_spec
     | term_spec log_name_spec
+    | term_spec windows_program_spec
+    | term_spec windows_service_spec
     | term_spec losspriority_spec
     | term_spec next_ip_spec
     | term_spec option_spec
@@ -2448,6 +2478,16 @@ def p_log_limit_spec(p: YaccProduction) -> None:
 def p_log_name_spec(p: YaccProduction) -> None:
     """log_name_spec : LOG_NAME ':' ':' DQUOTEDSTRING"""
     p[0] = VarType(VarType.LOG_NAME, p[4])
+
+
+def p_windows_program_spec(p: YaccProduction) -> None:
+    """windows_program_spec : WINDOWS_PROGRAM ':' ':' DQUOTEDSTRING"""
+    p[0] = VarType(VarType.WINDOWS_PROGRAM, p[4])
+
+
+def p_windows_service_spec(p: YaccProduction) -> None:
+    """windows_service_spec : WINDOWS_SERVICE ':' ':' STRING"""
+    p[0] = VarType(VarType.WINDOWS_SERVICE, p[4])
 
 
 def p_option_spec(p: YaccProduction) -> None:

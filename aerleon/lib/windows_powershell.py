@@ -154,6 +154,10 @@ class Term(windows.Term):
             atoms.append(f'-LocalPort {_QuoteList(local_port)}')
         if remote_port:
             atoms.append(f'-RemotePort {_QuoteList(remote_port)}')
+        if self.term.windows_program:
+            atoms.append(f'-Program {_Quote(self.term.windows_program)}')
+        if self.term.windows_service:
+            atoms.append(f'-Service {_Quote(self.term.windows_service)}')
         atoms.append(f'-Action {self._ACTION_TABLE[self.term.action[0]]}')
         if self.term.comment:
             atoms.append(f'-Description {_Quote(" ".join(self.term.comment))}')

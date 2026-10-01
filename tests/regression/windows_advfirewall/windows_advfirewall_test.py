@@ -141,6 +141,16 @@ header {
 }
 """
 
+GOOD_TERM_PROGRAM = """
+term allow-ssh-sshd {
+  destination-port:: HTTPS
+  protocol:: tcp
+  windows-program:: "C:\\Program Files\\OpenSSH\\sshd.exe"
+  windows-service:: sshd
+  action:: accept
+}
+"""
+
 BAD_TERM_ICMP = """
 term test-icmp {
   icmp-type:: echo-request echo-reply
@@ -247,6 +257,8 @@ SUPPORTED_TOKENS = {
     'source_address_exclude',
     'source_port',
     'translated',
+    'windows_program',
+    'windows_service',
 }
 
 SUPPORTED_SUB_TOKENS = {
@@ -572,6 +584,15 @@ class WindowsAdvFirewallTest(absltest.TestCase):
         lines = self._Policy(GOOD_HEADER_IN_BLOCK + GOOD_SIMPLE + GOOD_HEADER_OUT, GOOD_SIMPLE)
         self.assertEqual(
             lines, ['netsh advfirewall set allprofiles firewallpolicy blockinbound,notconfigured']
+        )
+
+    def testProgramAndService(self):
+        """The program path is quoted, since it may contain spaces."""
+        self.naming._ParseLine('HTTPS = 443/tcp', 'services')
+        rules = self._Render(GOOD_HEADER_IN, GOOD_TERM_PROGRAM)
+        self.assertIn(
+            'protocol=tcp program="C:\\Program Files\\OpenSSH\\sshd.exe" service=sshd action=allow',
+            rules[0],
         )
 
     def testBuildTokens(self):

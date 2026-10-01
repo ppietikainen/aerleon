@@ -224,7 +224,7 @@ class WindowsIPSec(windows.WindowsGenerator):
         """
         supported_tokens, supported_sub_tokens = super()._BuildTokens()
 
-        supported_tokens -= {'icmp_type'}
+        supported_tokens -= {'icmp_type', 'windows_program', 'windows_service'}
         del supported_sub_tokens['icmp_type']
         return supported_tokens, supported_sub_tokens
 

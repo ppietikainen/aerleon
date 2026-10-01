@@ -19,7 +19,7 @@ from unittest import mock
 
 from absl.testing import absltest
 
-from aerleon.lib import naming, policy, windows_ipsec
+from aerleon.lib import aclgenerator, naming, policy, windows_ipsec
 from tests.regression_utils import capture
 
 GOOD_HEADER = """
@@ -230,6 +230,16 @@ class WindowsIPSecTest(absltest.TestCase):
             'multi-proto',
         )
         print(result)
+
+    def testProgramUnsupported(self):
+        """windows_ipsec filters cannot match on a program; the term must not
+        render as if it were unscoped."""
+        pol = policy.ParsePolicy(
+            GOOD_HEADER
+            + 'term t {\n  protocol:: tcp\n  windows-service:: sshd\n  action:: accept\n}\n',
+            self.naming,
+        )
+        self.assertRaises(aclgenerator.UnsupportedFilterError, windows_ipsec.WindowsIPSec, pol, 2)
 
     def testBuildTokens(self):
         pol1 = windows_ipsec.WindowsIPSec(

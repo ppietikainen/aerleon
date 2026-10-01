@@ -41,6 +41,8 @@ class Term(windows.Term):
     _PROTO_ATOM = string.Template('protocol=${protocol}')
     # 'allow' or 'block'
     _ACTION_ATOM = string.Template('action=${action}')
+    _PROGRAM_ATOM = string.Template('program="${program}"')
+    _SERVICE_ATOM = string.Template('service=${service}')
 
     _RULE_FORMAT = string.Template(
         'add rule name=${name} enable=yes ' 'interfacetype=any ${atoms}'
@@ -167,6 +169,11 @@ class Term(windows.Term):
             elif proto == 'hopopt':
                 proto = '0'
             atoms.append(self._PROTO_ATOM.substitute(protocol=proto))
+
+        if self.term.windows_program:
+            atoms.append(self._PROGRAM_ATOM.substitute(program=self.term.windows_program))
+        if self.term.windows_service:
+            atoms.append(self._SERVICE_ATOM.substitute(service=self.term.windows_service))
 
         atoms.append(self._ACTION_ATOM.substitute(action=self._ACTION_TABLE[action]))
 
