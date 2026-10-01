@@ -1654,6 +1654,12 @@ targets:
 * _in_: Specifies that the direction of packet flow is in.
 * _inet_: specifies that the resulting filter should only render IPv4 addresses.
 * _inet6_: specifies that the resulting filter should only render IPv6 addresses.
+* _mixed_: render both address families from one filter. (default)
+
+netsh accepts IPv4 and IPv6 addresses in the same `remoteip`/`localip` list, so
+a `mixed` filter renders each term once with all of its addresses. `icmp` and
+`icmpv6` both render; under `inet` only `icmp` does, and under `inet6` only
+`icmpv6`.
 
 ### Term Format
 
