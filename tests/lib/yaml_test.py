@@ -212,6 +212,16 @@ class YAMLParsePolicyTest(absltest.TestCase):
         self.naming.GetNetAddr.return_value = [nacaddr.IP('10.1.1.1/32')]
         self.base_dir = ""
 
+    def testPolicyCarriesFilename(self):
+        """Policy.filename is set from the file, as it is for .pol policies."""
+        pol = yaml_frontend.ParsePolicy(
+            GOOD_YAML_POLICY_BASIC,
+            filename="pol/basic.yaml",
+            base_dir=self.base_dir,
+            definitions=self.naming,
+        )
+        self.assertEqual(pol.filename, "pol/basic.yaml")
+
     def testTypeErrors(self):
         with self.assertRaises(yaml_frontend.PolicyTypeError) as arcm:
             yaml_frontend.ParsePolicy(

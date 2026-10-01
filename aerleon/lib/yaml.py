@@ -131,6 +131,8 @@ def ParseFile(
         return
     if not policy_dict['filters']:
         return
+    # Policy.filename, as policy.ParsePolicy sets it for .pol files.
+    policy_dict.setdefault('filename', filename)
     return policy.FromBuilder(PolicyBuilder(policy_dict, definitions, optimize, shade_check))
 
 
@@ -172,6 +174,8 @@ def ParsePolicy(
         return
     if not policy_dict['filters']:
         return
+    # Policy.filename, as policy.ParsePolicy sets it for .pol files.
+    policy_dict.setdefault('filename', filename)
     return policy.FromBuilder(PolicyBuilder(policy_dict, definitions, optimize, shade_check))
 
 
