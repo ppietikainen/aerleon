@@ -1647,7 +1647,7 @@ The Windows Advanced Firewall header designation has the following format:
 
 ```yaml
 targets:
-    windows_advfirewall: {out|in} {inet|inet6|mixed}
+    windows_advfirewall: {out|in} {inet|inet6|mixed} {permit|block}
 ```
 
 * _out_: Specifies that the direction of packet flow is out. (default)
@@ -1660,6 +1660,15 @@ netsh accepts IPv4 and IPv6 addresses in the same `remoteip`/`localip` list, so
 a `mixed` filter renders each term once with all of its addresses. `icmp` and
 `icmpv6` both render; under `inet` only `icmp` does, and under `inet6` only
 `icmpv6`.
+
+* _permit_ / _block_: set the default action for this direction on all
+  profiles, rendered as `netsh advfirewall set allprofiles firewallpolicy`.
+  The other direction is left `notconfigured`. Optional; without it the host's
+  existing default is unchanged.
+
+A `block` default is the way to express default deny. A final deny-all term
+does not work on Windows: block rules take precedence over allow rules, so it
+would block the traffic the earlier terms allow.
 
 ### Term Format
 

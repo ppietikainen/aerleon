@@ -273,12 +273,12 @@ class WindowsGenerator(aclgenerator.ACLGenerator):
     def _TranslatePolicy(self, pol: Policy, exp_info: int) -> None:
         """Translate a policy from objects into strings."""
         self.windows_policies = []
-        default_action = None
         good_default_actions = ['permit', 'block']
         good_options = []
 
         for header, terms in pol.filters:
             filter_type = None
+            default_action = None
             filter_options = header.FilterOptions(self._PLATFORM)[1:]
             filter_name = header.FilterName(self._PLATFORM)
 
@@ -374,9 +374,7 @@ class WindowsGenerator(aclgenerator.ACLGenerator):
             target.append(f": {filter_type}")
 
             if default_action:
-                raise aclgenerator.UnsupportedTargetOptionError(
-                    'Windows generator does not support default actions'
-                )
+                self._HandleDefaultAction(header, default_action, target)
 
             # add the terms
             for term in terms:
@@ -390,6 +388,15 @@ class WindowsGenerator(aclgenerator.ACLGenerator):
 
     def _HandlePolicyHeader(self, header: Header, target: list[str]) -> None:
         pass
+
+    def _HandleDefaultAction(self, header: Header, default_action: str, target: list[str]) -> None:
+        """Render the filter's default action ('permit' or 'block').
+
+        Subclasses that can express a default action override this.
+        """
+        raise aclgenerator.UnsupportedTargetOptionError(
+            f'{self._PLATFORM} generator does not support default actions'
+        )
 
     def _HandleTermFooter(self, header: Header, term: Term, target: list[str]) -> None:
         pass
