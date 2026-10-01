@@ -36,6 +36,16 @@ def _QuoteList(values) -> str:
     return ','.join(_Quote(v) for v in values)
 
 
+def _AddressList(addrs: list[IPv4 | IPv6]) -> str:
+    """Quoted address list; host prefixes are written as bare addresses, the
+    form Get-NetFirewallAddressFilter reports them in."""
+    return _QuoteList(
+        dict.fromkeys(
+            str(a.network_address) if a.prefixlen == a.max_prefixlen else str(a) for a in addrs
+        )
+    )
+
+
 class Term(windows.Term):
     """Generate one New-NetFirewallRule command per protocol of a term."""
 
@@ -137,11 +147,9 @@ class Term(windows.Term):
             atoms.append(f'-IcmpType {_QuoteList(icmp_types)}')
         # An address list of only /0 prefixes is the cmdlet default, Any.
         if not all(a.prefixlen == 0 for a in local_addr):
-            atoms.append(f'-LocalAddress {_QuoteList(dict.fromkeys(str(a) for a in local_addr))}')
+            atoms.append(f'-LocalAddress {_AddressList(local_addr)}')
         if not all(a.prefixlen == 0 for a in remote_addr):
-            atoms.append(
-                f'-RemoteAddress {_QuoteList(dict.fromkeys(str(a) for a in remote_addr))}'
-            )
+            atoms.append(f'-RemoteAddress {_AddressList(remote_addr)}')
         if local_port:
             atoms.append(f'-LocalPort {_QuoteList(local_port)}')
         if remote_port:

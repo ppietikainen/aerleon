@@ -143,7 +143,7 @@ class WindowsPowerShellTest(absltest.TestCase):
         super().setUp()
         self.naming = naming.Naming()
         self.naming._ParseLine('MGMT = 192.0.2.0/24 2001:db8::/64', 'networks')
-        self.naming._ParseLine('RESOLVERS = 198.51.100.53/32', 'networks')
+        self.naming._ParseLine('RESOLVERS = 198.51.100.53/32 2001:db8::53/128', 'networks')
         self.naming._ParseLine('SSH = 22/tcp', 'services')
         self.naming._ParseLine('DNS = 53/udp', 'services')
         self.naming._ParseLine('RDP = 3389/tcp 3389/udp', 'services')
@@ -185,7 +185,8 @@ class WindowsPowerShellTest(absltest.TestCase):
 
     def testOutboundAddressesAreRemote(self):
         rules = self._Rules(HEADER_OUT + TERM_DNS_OUT)
-        self.assertIn("-RemoteAddress '198.51.100.53/32' -RemotePort '53'", rules[0])
+        # Host prefixes are written as bare addresses.
+        self.assertIn("-RemoteAddress '198.51.100.53','2001:db8::53' -RemotePort '53'", rules[0])
         self.assertNotIn('-LocalAddress', rules[0])
 
     def testOneRulePerProtocol(self):

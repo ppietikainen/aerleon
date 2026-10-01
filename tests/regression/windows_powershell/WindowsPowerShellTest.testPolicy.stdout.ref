@@ -21,6 +21,6 @@ New-NetFirewallRule -DisplayName 'i_deny-vrrp' -Group 'aerleon-host1' -Direction
 # $Date:$
 # $Revision:$
 # mixed
-New-NetFirewallRule -DisplayName 'o_allow-dns' -Group 'aerleon-host1' -Direction Outbound -Protocol UDP -RemoteAddress '198.51.100.53/32' -RemotePort '53' -Action Allow | Out-Null
+New-NetFirewallRule -DisplayName 'o_allow-dns' -Group 'aerleon-host1' -Direction Outbound -Protocol UDP -RemoteAddress '198.51.100.53','2001:db8::53' -RemotePort '53' -Action Allow | Out-Null
 New-NetFirewallRule -DisplayName 'o_allow-any' -Group 'aerleon-host1' -Direction Outbound -Protocol Any -Action Allow | Out-Null
 
