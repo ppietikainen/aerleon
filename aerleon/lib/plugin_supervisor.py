@@ -107,6 +107,7 @@ BUILTIN_GENERATORS: list[tuple] = [
     ('pcap',                 'aerleon.lib.pcap',                 'PcapFilter'),
     ('packetfilter',         'aerleon.lib.packetfilter',         'PacketFilter'),
     ('windows_advfirewall',  'aerleon.lib.windows_advfirewall',  'WindowsAdvFirewall'),
+    ('windows_powershell',   'aerleon.lib.windows_powershell',   'WindowsPowerShell'),
     ('srxlo',                'aerleon.lib.srxlo',                'SRXlo'),
     ('cisconx',              'aerleon.lib.cisconx',              'CiscoNX'),
     ('ciscoxr',              'aerleon.lib.ciscoxr',              'CiscoXR'),

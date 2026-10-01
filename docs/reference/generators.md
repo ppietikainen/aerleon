@@ -1686,6 +1686,48 @@ would block the traffic the earlier terms allow.
 
 ***
 
+## Windows PowerShell
+
+Renders the same rules as Windows Advanced Firewall through the PowerShell
+NetSecurity cmdlets (`New-NetFirewallRule`, `Set-NetFirewallProfile`). The
+output is a `.ps1` script.
+
+### Header Format
+
+The Windows PowerShell header designation has the following format:
+
+```yaml
+targets:
+    windows_powershell: {out|in} {inet|inet6|mixed} {permit|block}
+```
+
+* _out_: Specifies that the direction of packet flow is out. (default)
+* _in_: Specifies that the direction of packet flow is in.
+* _inet_: specifies that the resulting filter should only render IPv4 addresses.
+* _inet6_: specifies that the resulting filter should only render IPv6 addresses.
+* _mixed_: render both address families from one filter. (default)
+* _permit_ / _block_: set the default action for this direction on all
+  profiles with `Set-NetFirewallProfile -All`. Optional.
+
+Each term becomes one `New-NetFirewallRule` per protocol, named after the term
+(`-DisplayName`). Every rule of a policy is created in the group
+`aerleon-<policy file name>`. The script starts by removing that group, so
+running it again replaces the policy's rules instead of adding a second copy.
+Term comments become the rule's `-Description`.
+
+### Term Format
+
+* for common keys see the [common](#common) section above.
+
+### Sub Tokens
+
+### Actions
+
+* _accept_
+* _deny_
+
+***
+
 ## WindowsIPSec
 
 ### Header Format

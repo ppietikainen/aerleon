@@ -1,0 +1,26 @@
+# Remove the rules a previous run of this policy created.
+Get-NetFirewallRule -Group 'aerleon-host1' -ErrorAction SilentlyContinue | Remove-NetFirewallRule
+# Windows_powershell in Policy
+# inbound default deny
+#
+# $Id:$
+# $Date:$
+# $Revision:$
+# mixed
+Set-NetFirewallProfile -All -DefaultInboundAction Block
+New-NetFirewallRule -DisplayName 'i_allow-icmp' -Group 'aerleon-host1' -Direction Inbound -Protocol ICMPv4 -Action Allow | Out-Null
+New-NetFirewallRule -DisplayName 'i_allow-ndp' -Group 'aerleon-host1' -Direction Inbound -Protocol ICMPv6 -IcmpType '135','136' -Action Allow | Out-Null
+New-NetFirewallRule -DisplayName 'i_allow-ssh' -Group 'aerleon-host1' -Direction Inbound -Protocol TCP -RemoteAddress '192.0.2.0/24','2001:db8::/64' -LocalPort '22' -Action Allow -Description 'it''s the management network' | Out-Null
+New-NetFirewallRule -DisplayName 'i_allow-rdp' -Group 'aerleon-host1' -Direction Inbound -Protocol TCP -RemoteAddress '192.0.2.0/24','2001:db8::/64' -LocalPort '3389' -Action Allow | Out-Null
+New-NetFirewallRule -DisplayName 'i_allow-rdp' -Group 'aerleon-host1' -Direction Inbound -Protocol UDP -RemoteAddress '192.0.2.0/24','2001:db8::/64' -LocalPort '3389' -Action Allow | Out-Null
+New-NetFirewallRule -DisplayName 'i_deny-vrrp' -Group 'aerleon-host1' -Direction Inbound -Protocol 112 -Action Block | Out-Null
+# Windows_powershell out Policy
+# outbound test acl
+#
+# $Id:$
+# $Date:$
+# $Revision:$
+# mixed
+New-NetFirewallRule -DisplayName 'o_allow-dns' -Group 'aerleon-host1' -Direction Outbound -Protocol UDP -RemoteAddress '198.51.100.53/32' -RemotePort '53' -Action Allow | Out-Null
+New-NetFirewallRule -DisplayName 'o_allow-any' -Group 'aerleon-host1' -Direction Outbound -Protocol Any -Action Allow | Out-Null
+
