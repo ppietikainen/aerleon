@@ -249,6 +249,8 @@ class WindowsGenerator(aclgenerator.ACLGenerator):
     _DEFAULT_PROTOCOL = 'all'
     SUFFIX = '.bat'
     _RENDER_PREFIX = None
+    # Comment leader for the filter header lines; ':' is a label in cmd.
+    _COMMENT_PREFIX = ':'
     _DEFAULT_ACTION = 'block'
     _TERM = Term
 
@@ -359,7 +361,8 @@ class WindowsGenerator(aclgenerator.ACLGenerator):
 
         for header, _, filter_type, default_action, terms in self.windows_policies:
             # Add comments for this filter
-            target.append(f': {pretty_platform} {header.FilterName(self._PLATFORM)} Policy')
+            c = self._COMMENT_PREFIX
+            target.append(f'{c} {pretty_platform} {header.FilterName(self._PLATFORM)} Policy')
 
             self._HandlePolicyHeader(header, target)
 
@@ -367,11 +370,11 @@ class WindowsGenerator(aclgenerator.ACLGenerator):
             comments = aclgenerator.WrapWords(header.comment, 70)
             if comments and comments[0]:
                 for line in comments:
-                    target.append(f': {line}')
-                target.append(':')
+                    target.append(f'{c} {line}')
+                target.append(c)
             # add the p4 tags
-            target.extend(aclgenerator.AddRepositoryTags(': '))
-            target.append(f": {filter_type}")
+            target.extend(aclgenerator.AddRepositoryTags(f'{c} '))
+            target.append(f"{c} {filter_type}")
 
             if default_action:
                 self._HandleDefaultAction(header, default_action, target)
