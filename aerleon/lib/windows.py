@@ -46,7 +46,7 @@ class Term(aclgenerator.Term):
           term: A policy.Term object to represent in windows_ipsec.
           filter_name: The name of the filter chan to attach the term to.
           filter_action: The default action of the filter.
-          af: Which address family ('inet' or 'inet6') to apply the term to.
+          af: Which address family ('inet', 'inet6' or 'mixed') to apply the term to.
 
         Raises:
           UnsupportedFilterError: Filter is not supported.
@@ -56,6 +56,10 @@ class Term(aclgenerator.Term):
         self.filter = filter_name  # actual name of filter
         self.default_action = filter_action
         self.options = []
+        # Under a mixed filter an ICMP-only term still belongs to one family:
+        # icmp-type numbering and the icmp/icmpv6 keyword both depend on it.
+        if af == 'mixed' and term.protocol in (['icmp'], ['icmpv6']):
+            af = 'inet6' if term.protocol == ['icmpv6'] else 'inet'
         self.af = af
 
         if af == 'inet6':
@@ -260,7 +264,8 @@ class WindowsGenerator(aclgenerator.ACLGenerator):
     _DEFAULT_ACTION = 'block'
     _TERM = Term
 
-    _GOOD_AFS = ['inet', 'inet6']
+    _GOOD_AFS = ['inet', 'inet6', 'mixed']
+    _DEFAULT_AF = 'mixed'
 
     def _BuildTokens(self) -> tuple[set[str], dict[str, set[str]]]:
         """Build supported tokens for platform.
@@ -280,12 +285,12 @@ class WindowsGenerator(aclgenerator.ACLGenerator):
     def _TranslatePolicy(self, pol: Policy, exp_info: int) -> None:
         """Translate a policy from objects into strings."""
         self.windows_policies = []
-        default_action = None
         good_default_actions = ['permit', 'block']
         good_options = []
 
         for header, terms in pol.filters:
             filter_type = None
+            default_action = None
             filter_options = header.FilterOptions(self._PLATFORM)[1:]
             filter_name = header.FilterName(self._PLATFORM)
 
@@ -318,7 +323,7 @@ class WindowsGenerator(aclgenerator.ACLGenerator):
                         )
                     filter_type = address_family
             if filter_type is None:
-                filter_type = 'inet'
+                filter_type = self._DEFAULT_AF
 
             # does this policy override the default filter actions?
             for next_target in header.target:
@@ -381,9 +386,7 @@ class WindowsGenerator(aclgenerator.ACLGenerator):
             target.append(f": {filter_type}")
 
             if default_action:
-                raise aclgenerator.UnsupportedTargetOptionError(
-                    'Windows generator does not support default actions'
-                )
+                self._HandleDefaultAction(header, default_action, target)
 
             # add the terms
             for term in terms:
@@ -397,6 +400,15 @@ class WindowsGenerator(aclgenerator.ACLGenerator):
 
     def _HandlePolicyHeader(self, header: Header, target: list[str]) -> None:
         pass
+
+    def _HandleDefaultAction(self, header: Header, default_action: str, target: list[str]) -> None:
+        """Render the filter's default action ('permit' or 'block').
+
+        Subclasses that can express a default action override this.
+        """
+        raise aclgenerator.UnsupportedTargetOptionError(
+            f'{self._PLATFORM} generator does not support default actions'
+        )
 
     def _HandleTermFooter(self, header: Header, term: Term, target: list[str]) -> None:
         pass
