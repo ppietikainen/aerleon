@@ -345,6 +345,7 @@ class Term:
       pan-application: VarType.PAN_APPLICATION
       windows-program: VarType.WINDOWS_PROGRAM
       windows-service: VarType.WINDOWS_SERVICE
+      windows-rpc: VarType.WINDOWS_RPC
       profile-settings: VarType.PROFILE_SETTINGS
       policer: VarType.POLICER
       priority: VarType.PRIORITY
@@ -453,6 +454,7 @@ class Term:
         self.pan_application = []
         self.windows_program = None
         self.windows_service = None
+        self.windows_rpc = None
         self.profile_settings = []
         self.routing_instance = None
         self.source_address = []
@@ -800,6 +802,8 @@ class Term:
             ret_str.append(f'  windows_program: {self.windows_program}')
         if self.windows_service:
             ret_str.append(f'  windows_service: {self.windows_service}')
+        if self.windows_rpc:
+            ret_str.append(f'  windows_rpc: {self.windows_rpc}')
         if self.priority:
             ret_str.append(f'  priority: {self.priority}')
         if self.counter:
@@ -888,10 +892,12 @@ class Term:
         if sorted(self.pan_application) != sorted(other.pan_application):
             return False
 
-        # windows-program, windows-service
+        # windows-program, windows-service, windows-rpc
         if self.windows_program != other.windows_program:
             return False
         if self.windows_service != other.windows_service:
+            return False
+        if self.windows_rpc != other.windows_rpc:
             return False
 
         # profile-settings
@@ -934,6 +940,8 @@ class Term:
         if self.windows_program != other.windows_program:
             return False
         if self.windows_service != other.windows_service:
+            return False
+        if self.windows_rpc != other.windows_rpc:
             return False
         if sorted(self.profile_settings) != sorted(other.profile_settings):
             return False
@@ -1286,6 +1294,8 @@ class Term:
                 self.windows_program = obj.value
             elif obj.var_type is VarType.WINDOWS_SERVICE:
                 self.windows_service = obj.value
+            elif obj.var_type is VarType.WINDOWS_RPC:
+                self.windows_rpc = obj.value
             # police man, tryin'a take you jail
             elif obj.var_type is VarType.POLICER:
                 self.policer = obj.value
@@ -1667,6 +1677,7 @@ class VarType:
     DESTINATION_FQDN = 68
     WINDOWS_PROGRAM = 71
     WINDOWS_SERVICE = 72
+    WINDOWS_RPC = 73
 
     def __init__(self, var_type: int, value: Any) -> None:
         self.var_type = var_type
@@ -1870,6 +1881,7 @@ tokens = (
     'LOG_NAME',
     'WINDOWS_PROGRAM',
     'WINDOWS_SERVICE',
+    'WINDOWS_RPC',
     'LOSS_PRIORITY',
     'LPAREN',
     'LSQUARE',
@@ -1975,6 +1987,7 @@ reserved = {
     'pan-application': 'PAN_APPLICATION',
     'windows-program': 'WINDOWS_PROGRAM',
     'windows-service': 'WINDOWS_SERVICE',
+    'windows-rpc': 'WINDOWS_RPC',
     'profile-settings': 'PROFILE_SETTINGS',
     'routing-instance': 'ROUTING_INSTANCE',
     'source-address': 'SADDR',
@@ -2145,6 +2158,7 @@ def p_term_spec(p: YaccProduction) -> None:
     | term_spec log_name_spec
     | term_spec windows_program_spec
     | term_spec windows_service_spec
+    | term_spec windows_rpc_spec
     | term_spec losspriority_spec
     | term_spec next_ip_spec
     | term_spec option_spec
@@ -2488,6 +2502,11 @@ def p_windows_program_spec(p: YaccProduction) -> None:
 def p_windows_service_spec(p: YaccProduction) -> None:
     """windows_service_spec : WINDOWS_SERVICE ':' ':' STRING"""
     p[0] = VarType(VarType.WINDOWS_SERVICE, p[4])
+
+
+def p_windows_rpc_spec(p: YaccProduction) -> None:
+    """windows_rpc_spec : WINDOWS_RPC ':' ':' STRING"""
+    p[0] = VarType(VarType.WINDOWS_RPC, p[4])
 
 
 def p_option_spec(p: YaccProduction) -> None:

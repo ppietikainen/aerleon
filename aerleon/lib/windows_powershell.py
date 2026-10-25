@@ -62,6 +62,12 @@ class Term(windows.Term):
         'out': 'Outbound',
     }
 
+    # windows-rpc values, as -LocalPort keywords.
+    _RPC_TABLE = {
+        'dynamic': 'RPC',
+        'epmap': 'RPCEPMap',
+    }
+
     # Protocols New-NetFirewallRule takes by name; anything else goes by number.
     _PROTOCOL_TABLE = {
         'tcp': 'TCP',
@@ -150,7 +156,10 @@ class Term(windows.Term):
             atoms.append(f'-LocalAddress {_AddressList(local_addr)}')
         if not all(a.prefixlen == 0 for a in remote_addr):
             atoms.append(f'-RemoteAddress {_AddressList(remote_addr)}')
-        if local_port:
+        rpc = self._RpcKeyword(direction, proto, local_port)
+        if rpc:
+            atoms.append(f'-LocalPort {rpc}')
+        elif local_port:
             atoms.append(f'-LocalPort {_QuoteList(local_port)}')
         if remote_port:
             atoms.append(f'-RemotePort {_QuoteList(remote_port)}')
@@ -163,6 +172,33 @@ class Term(windows.Term):
             atoms.append(f'-Description {_Quote(" ".join(self.term.comment))}')
 
         return 'New-NetFirewallRule ' + ' '.join(atoms) + ' | Out-Null'
+
+    def _RpcKeyword(self, direction: str, proto: str, local_port: list[str]) -> str | None:
+        """The -LocalPort keyword for windows-rpc, or None without it.
+
+        RPC is the dynamic port RPC assigned to the rule's program or service
+        (whatever range the host uses), RPCEPMap the endpoint mapper. Both are
+        inbound TCP local ports, and the keyword is the whole port list, so a
+        term with windows-rpc names no destination-port.
+        """
+        value = self.term.windows_rpc
+        if not value:
+            return None
+        if value not in self._RPC_TABLE:
+            raise aclgenerator.UnsupportedFilterError(
+                f'Term {self.term.name}: windows-rpc must be one of'
+                f' {", ".join(sorted(self._RPC_TABLE))}, not {value}'
+            )
+        if direction != 'in' or proto != 'tcp':
+            raise aclgenerator.UnsupportedFilterError(
+                f'Term {self.term.name}: windows-rpc applies to inbound tcp only'
+            )
+        if local_port:
+            raise aclgenerator.UnsupportedFilterError(
+                f'Term {self.term.name}: windows-rpc replaces the port list;'
+                ' remove destination-port'
+            )
+        return self._RPC_TABLE[value]
 
     def _Protocol(self, proto: str) -> str:
         if proto in self._PROTOCOL_TABLE:
@@ -177,6 +213,13 @@ class WindowsPowerShell(windows.WindowsGenerator):
 
     _PLATFORM = 'windows_powershell'
     _TERM = Term
+
+    def _BuildTokens(self) -> tuple[set[str], dict[str, set[str]]]:
+        supported_tokens, supported_sub_tokens = super()._BuildTokens()
+        # The RPC port keywords are New-NetFirewallRule's; the other Windows
+        # generators reject windows-rpc rather than render the term unscoped.
+        supported_tokens |= {'windows_rpc'}
+        return supported_tokens, supported_sub_tokens
     SUFFIX = '.ps1'
     _COMMENT_PREFIX = '#'
 

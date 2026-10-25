@@ -15,7 +15,7 @@
 
 from absl.testing import absltest
 
-from aerleon.lib import naming, policy, windows_powershell
+from aerleon.lib import aclgenerator, naming, policy, windows_powershell
 from aerleon.lib import yaml as yaml_frontend
 from tests.regression_utils import capture
 
@@ -128,6 +128,49 @@ term allow-rdp-termservice {
 }
 """
 
+TERM_RPC = """
+term allow-dfsr-rpc {
+  protocol:: tcp
+  windows-rpc:: dynamic
+  windows-service:: Dfsr
+  action:: accept
+}
+"""
+
+TERM_EPMAP = """
+term allow-epmap {
+  protocol:: tcp
+  windows-rpc:: epmap
+  windows-service:: RpcSs
+  action:: accept
+}
+"""
+
+TERM_RPC_WITH_PORT = """
+term allow-rpc-port {
+  destination-port:: SSH
+  protocol:: tcp
+  windows-rpc:: dynamic
+  action:: accept
+}
+"""
+
+TERM_RPC_UDP = """
+term allow-rpc-udp {
+  protocol:: udp
+  windows-rpc:: dynamic
+  action:: accept
+}
+"""
+
+TERM_RPC_BAD = """
+term allow-rpc-bad {
+  protocol:: tcp
+  windows-rpc:: rpcss
+  action:: accept
+}
+"""
+
 YAML_PROGRAM = """
 filters:
 - header:
@@ -167,6 +210,7 @@ SUPPORTED_TOKENS = {
     'source_port',
     'translated',
     'windows_program',
+    'windows_rpc',
     'windows_service',
 }
 
@@ -294,6 +338,41 @@ class WindowsPowerShellTest(absltest.TestCase):
         pol = yaml_frontend.ParsePolicy(YAML_PROGRAM, filename='h.yaml', definitions=self.naming)
         text = str(windows_powershell.WindowsPowerShell(pol, EXP_INFO))
         self.assertIn("-Program 'C:\\Program Files\\OpenSSH\\sshd.exe' -Service 'sshd'", text)
+
+    def testRpcDynamic(self):
+        """RPC is whatever port RPC gave the service, in the host's range."""
+        (rule,) = self._Rules(HEADER_IN + TERM_RPC)
+        self.assertIn("-LocalPort RPC -Service 'Dfsr'", rule)
+
+    def testRpcEndpointMapper(self):
+        (rule,) = self._Rules(HEADER_IN + TERM_EPMAP)
+        self.assertIn('-LocalPort RPCEPMap', rule)
+
+    def testRpcFromYaml(self):
+        pol = yaml_frontend.ParsePolicy(
+            YAML_PROGRAM.replace('destination-port: SSH', 'windows-rpc: dynamic'),
+            filename='h.yaml',
+            definitions=self.naming,
+        )
+        text = str(windows_powershell.WindowsPowerShell(pol, EXP_INFO))
+        self.assertIn("-LocalPort RPC -Program", text)
+
+    def testRpcRejectsAPortList(self):
+        """The keyword is the whole port list: both would be ambiguous."""
+        self.assertRaises(
+            aclgenerator.UnsupportedFilterError, self._Render, HEADER_IN + TERM_RPC_WITH_PORT
+        )
+
+    def testRpcIsInboundTcpOnly(self):
+        self.assertRaises(
+            aclgenerator.UnsupportedFilterError, self._Render, HEADER_IN + TERM_RPC_UDP
+        )
+        self.assertRaises(aclgenerator.UnsupportedFilterError, self._Render, HEADER_OUT + TERM_RPC)
+
+    def testRpcRejectsAnUnknownValue(self):
+        self.assertRaises(
+            aclgenerator.UnsupportedFilterError, self._Render, HEADER_IN + TERM_RPC_BAD
+        )
 
     def testBuildTokens(self):
         acl = windows_powershell.WindowsPowerShell(

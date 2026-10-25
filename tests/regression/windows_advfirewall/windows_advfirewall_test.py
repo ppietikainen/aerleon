@@ -586,6 +586,21 @@ class WindowsAdvFirewallTest(absltest.TestCase):
             lines, ['netsh advfirewall set allprofiles firewallpolicy blockinbound,notconfigured']
         )
 
+    def testRpcKeywordUnsupported(self):
+        """netsh could say localport=RPC, but windows-rpc is the PowerShell
+        generator's: here the term must not render as if it were unscoped."""
+        pol = policy.ParsePolicy(
+            GOOD_HEADER_IN
+            + 'term t {\n  protocol:: tcp\n  windows-rpc:: dynamic\n  action:: accept\n}\n',
+            self.naming,
+        )
+        self.assertRaises(
+            aclgenerator.UnsupportedFilterError,
+            windows_advfirewall.WindowsAdvFirewall,
+            pol,
+            EXP_INFO,
+        )
+
     def testProgramAndService(self):
         """The program path is quoted, since it may contain spaces."""
         self.naming._ParseLine('HTTPS = 443/tcp', 'services')

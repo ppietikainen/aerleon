@@ -1726,6 +1726,10 @@ Term comments become the rule's `-Description`.
 * for common keys see the [common](#common) section above.
 * _windows-program_: only match traffic of this executable (full path), rendered as `-Program`.
 * _windows-service_: only match traffic of this service (short name), rendered as `-Service`.
+* _windows-rpc_: `dynamic` or `epmap`, rendered as `-LocalPort RPC` or `-LocalPort RPCEPMap`:
+  the dynamic port RPC assigned to the rule's program or service, in whatever range the host
+  uses, or the RPC endpoint mapper. Inbound tcp only, and in place of _destination-port_. Other
+  generators reject it.
 
 The same svchost and HTTP.sys caveats as for Windows Advanced Firewall apply.
 
